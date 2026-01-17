@@ -1,0 +1,176 @@
+//> include: ./external/raylib/include
+//> libs: ./external/raylib
+//> cflags: -O3
+//> link: ./external/raylib/libraylib.a
+//> link: -s ASYNCIFY
+//> link: -s ASSERTIONS
+//> link: -s USE_GLFW=3
+//> link: -s WASM=1
+//> link: -s GL_ENABLE_GET_PROC_ADDRESS=1
+
+import "raylib.h"
+import "raymath.h"
+
+import "time.h"
+
+fn get_random_float(min: f32, max: f32) -> f32 {
+  var scale = rand() / (f32)RAND_MAX;
+  return min + scale * (max - min);
+}
+
+struct Paddle {
+  position: Vector2;
+  size: Vector2;
+  speed: f32;
+  score: u32;
+}
+
+struct Ball {
+  position: Vector2;
+  velocity: Vector2;
+  radius: f32;
+  speed: f32;
+}
+
+impl Ball {
+  fn setup(self, pos: Vector2, speed: f32) {
+    self.speed = speed;
+    self.position = pos;
+    // Random angle between -45deg to 45deg
+    var random_angle = get_random_float(0.0, PI / 2.0) - (PI / 4.0);
+    self.velocity = Vector2{
+      x: cos(random_angle),
+      y: sin(random_angle)
+    }
+    // Moves towards left or right
+    self.velocity.x = GetRandomValue(0, 1) ? -self.velocity.x : self.velocity.x;
+  }
+}
+
+fn main() {
+  const window_width = 1920;
+  const window_height = 1080;
+  const paddle_size_x = 10;
+  const paddle_size_y = 100;
+  const paddle_speed = 300;
+  const ball_speed = 500;
+
+  InitWindow(window_width, window_height, "Hello zc raylib pong");
+  defer CloseWindow();
+
+  srand((u32)time(NULL));
+
+  // Setup game objects
+  var left_paddle = Paddle {
+    position: Vector2 {
+      x: 0,
+      y: (window_height - paddle_size_y) / 2
+    },
+    size: Vector2 {
+      x: paddle_size_x,
+      y: paddle_size_y
+    },
+    speed: paddle_speed
+  };
+  var right_paddle = left_paddle;
+  right_paddle.position.x = window_width - right_paddle.position.x - right_paddle.size.x;
+
+  // Setup ball and initial starting velocity
+  var ball = Ball{};
+  ball.radius = 10;
+  ball.setup(Vector2{ x: (window_width) / 2, y: (window_height) / 2 }, ball_speed);
+
+  while (!WindowShouldClose()) {
+    // Update game logic
+    const dt = GetFrameTime();
+
+    // Left paddle control
+    {
+      var y_velocity = 0.0;
+      if (IsKeyDown(KEY_S)) {
+        y_velocity = 1.0;
+      }
+      else if (IsKeyDown(KEY_W)) {
+        y_velocity = -1.0;
+      }
+      left_paddle.position.y = left_paddle.position.y + (left_paddle.speed * y_velocity * dt);
+    }
+
+    // Right paddle control
+    {
+      var y_velocity = 0.0;
+      if (IsKeyDown(KEY_K)) {
+      y_velocity = 1.0;
+      }
+      else if (IsKeyDown(KEY_I)) {
+        y_velocity = -1.0;
+      }
+      right_paddle.position.y = right_paddle.position.y + (right_paddle.speed * y_velocity * dt);
+    }
+
+    // Ball logic
+    ball.position = Vector2Add(ball.position, Vector2Scale(ball.velocity, ball.speed * dt));
+
+    // Check if ball need to reflect off paddles
+    const left_paddle_rect = Rectangle{
+      x: left_paddle.position.x,
+      y: left_paddle.position.y,
+      width: left_paddle.size.x,
+      height: left_paddle.size.y
+    };
+    const right_paddle_rect = Rectangle{
+      x: right_paddle.position.x,
+      y: right_paddle.position.y,
+      width: right_paddle.size.x,
+      height: right_paddle.size.y
+    };
+    const collided_with_left_paddle = CheckCollisionCircleRec(ball.position, ball.radius, left_paddle_rect);
+    const collided_with_right_paddle = CheckCollisionCircleRec(ball.position, ball.radius, right_paddle_rect);
+    if (collided_with_left_paddle) {
+      ball.velocity = Vector2Reflect(ball.velocity, Vector2{x: 1, y: 0});
+      ball.speed = ball.speed * 1.05;
+    }
+    else if (collided_with_right_paddle) {
+      ball.velocity = Vector2Reflect(ball.velocity, Vector2{x: -1, y: 0});
+      ball.speed = ball.speed * 1.05;
+    }
+
+    // Check if ball need to reflect off the top/bottom screen bounds
+    if ((ball.position.y - ball.radius) < 0.0) {
+      ball.velocity = Vector2Reflect(ball.velocity, Vector2{x: 0, y: 1});
+    }
+    else if ((ball.position.y + ball.radius) > window_height) {
+      ball.velocity = Vector2Reflect(ball.velocity, Vector2{x: 0, y: -1});
+    }
+
+    // Check if ball need to respawn
+    if (ball.position.x > window_width) {
+      ++left_paddle.score;
+      ball.position = Vector2{x: 0, y: 0};
+      ball.setup(Vector2{ x: (window_width) / 2, y: (window_height) / 2 }, ball_speed);
+    }
+    else if (ball.position.x < 0) {
+      ++right_paddle.score;
+      ball.position = Vector2{x: 0, y: 0};
+      ball.setup(Vector2{ x: (window_width) / 2, y: (window_height) / 2 }, ball_speed);
+    }
+
+    // Setup rendering
+    BeginDrawing();
+    defer EndDrawing();
+    ClearBackground(BLACK);
+
+    // Draw paddles
+    DrawRectangleV(left_paddle.position, left_paddle.size, WHITE);
+    DrawRectangleV(right_paddle.position, right_paddle.size, WHITE);
+
+    // Draw ball
+    DrawCircleV(ball.position, ball.radius, WHITE);
+
+    // Draw scores
+    DrawText(TextFormat("%d", left_paddle.score), 30, 40, 30, WHITE);
+    var right_score_text = TextFormat("%d", right_paddle.score);
+    var right_score_text_size = MeasureText(right_score_text, 30);
+    DrawText(right_score_text, window_width - right_score_text_size - 30, 40, 30, WHITE);
+  }
+}

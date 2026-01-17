@@ -1,0 +1,82 @@
+<html>
+
+<head>
+  <style>
+    body {
+      margin: 0px;
+    }
+
+    canvas.emscripten {
+      object-fit: contain;
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+      width: 100%;
+      background-color: #1a1a1a;
+      image-rendering: optimizeSpeed;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: -o-crisp-edges;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: pixelated;
+      border-radius: 0;
+    }
+  </style>
+
+  <script>
+    // This prevents inputs from scrolling the webpage
+    window.addEventListener(
+      "keydown",
+      function (e) {
+        if (
+          [
+            "Space",
+            "ArrowUp",
+            "ArrowDown",
+            "ArrowLeft",
+            "ArrowRight",
+          ].indexOf(e.code) > -1
+        ) {
+          e.preventDefault();
+        }
+      },
+      false,
+    );
+  </script>
+</head>
+
+<body>
+  <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+  <p id="output" />
+  <script>
+    var Module = {
+      print: (function () {
+        var element = document.getElementById("output");
+        if (element) element.value = ""; // clear browser cache
+        return function (text) {
+          if (arguments.length > 1)
+            text = Array.prototype.slice
+              .call(arguments)
+              .join(" ");
+          console.log(text);
+          if (element) {
+            element.value += text + "\n";
+            element.scrollTop = element.scrollHeight; // focus on bottom
+          }
+        };
+      })(),
+      canvas: (function () {
+        var canvas = document.getElementById("canvas");
+        return canvas;
+      })(),
+    };
+  </script>
+  <script async src="main.js"></script>
+</body>
+
+</html>
