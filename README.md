@@ -13,7 +13,7 @@ Controls for the game:
 - I/K to control the right paddle
 
 ## Build Instructions
-NOTE: Zen-C is still heavily in development. So far, built and tested on Linux with gcc using this specific [commit](https://github.com/z-libs/Zen-C/commit/f026d721ef6e1708b4ec28fdb68179cb7dda75d0) of Zen-C. But it should work with any newer versions of Zen-C.
+NOTE: Zen-C is still heavily in development. So far, built and tested on Linux using this specific [commit](https://github.com/z-libs/Zen-C/commit/f026d721ef6e1708b4ec28fdb68179cb7dda75d0) of Zen-C. But it should work with any newer versions of Zen-C.
 
 1. Setup [emscripten](https://emscripten.org/docs/getting_started/downloads.html)
 2. Setup [Zen-C](https://github.com/z-libs/Zen-C) compiler
