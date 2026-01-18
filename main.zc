@@ -1,17 +1,23 @@
+// This example demonstrates how to make a raylib browser game compilable in emscripten
+
+// Pre-requisites:
+// Setup emscripten from here: https://emscripten.org/docs/getting_started/downloads.html
+// Compile raylib for web following this guide: https://github.com/raysan5/raylib/wiki/Working-for-Web-(HTML5)
+
+// Modify the next 3 lines as you see fit, depending on where your web build of raylib is installed
 //> include: ./external/raylib/include
 //> libs: ./external/raylib
-//> cflags: -O3
 //> link: ./external/raylib/libraylib.a
-//> link: -s ASYNCIFY
-//> link: -s ASSERTIONS
-//> link: -s USE_GLFW=3
-//> link: -s WASM=1
-//> link: -s GL_ENABLE_GET_PROC_ADDRESS=1
+
+// Do not modify this line
+//> link: -s ASYNCIFY -s ASSERTIONS -s USE_GLFW=3 -s WASM=1 -s GL_ENABLE_GET_PROC_ADDRESS=1
 
 import "raylib.h"
 import "raymath.h"
 
 import "time.h"
+
+import "std/vec.zc"
 
 fn get_random_float(min: f32, max: f32) -> f32 {
   var scale = rand() / (f32)RAND_MAX;
@@ -20,16 +26,17 @@ fn get_random_float(min: f32, max: f32) -> f32 {
 
 struct Paddle {
   position: Vector2;
-  size: Vector2;
+  velocity: Vector2;
   speed: f32;
+  size: Vector2;
   score: u32;
 }
 
 struct Ball {
   position: Vector2;
   velocity: Vector2;
-  radius: f32;
   speed: f32;
+  radius: f32;
 }
 
 impl Ball {
@@ -45,22 +52,64 @@ impl Ball {
     // Moves towards left or right
     self.velocity.x = GetRandomValue(0, 1) ? -self.velocity.x : self.velocity.x;
   }
+
+  fn check_collision_with_paddle(self, paddle: Paddle*) -> bool {
+    const paddle_rect = Rectangle{
+      x: paddle.position.x,
+      y: paddle.position.y,
+      width: paddle.size.x,
+      height: paddle.size.y
+    };
+    return CheckCollisionCircleRec(self.position, self.radius, paddle_rect);
+  }
+}
+
+trait Movable {
+  fn move(self, dt: f32);
+}
+
+impl Movable for Paddle {
+  fn move(self, dt: f32) {
+    self.position = Vector2Add(self.position, Vector2Scale(Vector2Scale(self.velocity, self.speed), dt));
+  }
+}
+
+impl Movable for Ball {
+  fn move(self, dt: f32) {
+    self.position = Vector2Add(self.position, Vector2Scale(Vector2Scale(self.velocity, self.speed), dt));
+  }
+}
+
+trait Drawable {
+  fn draw(self);
+}
+
+impl Drawable for Paddle {
+  fn draw(self) {
+    DrawRectangleV(self.position, self.size, WHITE);
+  }
+}
+
+impl Drawable for Ball {
+  fn draw(self) {
+    DrawCircleV(self.position, self.radius, WHITE);
+  }
 }
 
 fn main() {
-  const window_width = 1920;
-  const window_height = 1080;
+  const window_width = 1280;
+  const window_height = 720;
   const paddle_size_x = 10;
   const paddle_size_y = 100;
   const paddle_speed = 300;
-  const ball_speed = 500;
+  const ball_speed = 400;
 
   InitWindow(window_width, window_height, "Hello zc raylib pong");
   defer CloseWindow();
 
   srand((u32)time(NULL));
 
-  // Setup game objects
+  // Setup paddles
   var left_paddle = Paddle {
     position: Vector2 {
       x: 0,
@@ -75,62 +124,62 @@ fn main() {
   var right_paddle = left_paddle;
   right_paddle.position.x = window_width - right_paddle.position.x - right_paddle.size.x;
 
-  // Setup ball and initial starting velocity
+  // Setup ball
   var ball = Ball{};
   ball.radius = 10;
   ball.setup(Vector2{ x: (window_width) / 2, y: (window_height) / 2 }, ball_speed);
 
+  // Setup list of movables
+  var movables = Vec<Movable>{};
+  defer movables.free();
+  var paddle_left_movable: Movable = &left_paddle;
+  var paddle_right_movable: Movable = &right_paddle;
+  var ball_movable: Movable = &ball;
+  movables.push(paddle_left_movable);
+  movables.push(paddle_right_movable);
+  movables.push(ball_movable);
+
+  var drawables = Vec<Drawable>{};
+  defer drawables.free();
+  var left_paddle_drawable: Drawable = &left_paddle;
+  var right_paddle_drawable: Drawable = &right_paddle;
+  var ball_drawable: Drawable = &ball;
+  drawables.push(left_paddle_drawable);
+  drawables.push(right_paddle_drawable);
+  drawables.push(ball_drawable);
+
   while (!WindowShouldClose()) {
     // Update game logic
-    const dt = GetFrameTime();
-
     // Left paddle control
-    {
-      var y_velocity = 0.0;
-      if (IsKeyDown(KEY_S)) {
-        y_velocity = 1.0;
-      }
-      else if (IsKeyDown(KEY_W)) {
-        y_velocity = -1.0;
-      }
-      left_paddle.position.y = left_paddle.position.y + (left_paddle.speed * y_velocity * dt);
+    left_paddle.velocity.y = 0.0;
+    if (IsKeyDown(KEY_S)) {
+      left_paddle.velocity.y = 1.0;
+    }
+    else if (IsKeyDown(KEY_W)) {
+      left_paddle.velocity.y = -1.0;
     }
 
     // Right paddle control
-    {
-      var y_velocity = 0.0;
-      if (IsKeyDown(KEY_K)) {
-      y_velocity = 1.0;
-      }
-      else if (IsKeyDown(KEY_I)) {
-        y_velocity = -1.0;
-      }
-      right_paddle.position.y = right_paddle.position.y + (right_paddle.speed * y_velocity * dt);
+    right_paddle.velocity.y = 0.0;
+    if (IsKeyDown(KEY_K)) {
+      right_paddle.velocity.y = 1.0;
+    }
+    else if (IsKeyDown(KEY_I)) {
+      right_paddle.velocity.y = -1.0;
     }
 
-    // Ball logic
-    ball.position = Vector2Add(ball.position, Vector2Scale(ball.velocity, ball.speed * dt));
+    // Update all movables
+    const dt = GetFrameTime();
+    for i in 0..movables.len {
+      movables[i].move(dt);
+    }
 
     // Check if ball need to reflect off paddles
-    const left_paddle_rect = Rectangle{
-      x: left_paddle.position.x,
-      y: left_paddle.position.y,
-      width: left_paddle.size.x,
-      height: left_paddle.size.y
-    };
-    const right_paddle_rect = Rectangle{
-      x: right_paddle.position.x,
-      y: right_paddle.position.y,
-      width: right_paddle.size.x,
-      height: right_paddle.size.y
-    };
-    const collided_with_left_paddle = CheckCollisionCircleRec(ball.position, ball.radius, left_paddle_rect);
-    const collided_with_right_paddle = CheckCollisionCircleRec(ball.position, ball.radius, right_paddle_rect);
-    if (collided_with_left_paddle) {
+    if (ball.check_collision_with_paddle(&left_paddle)) {
       ball.velocity = Vector2Reflect(ball.velocity, Vector2{x: 1, y: 0});
       ball.speed = ball.speed * 1.05;
     }
-    else if (collided_with_right_paddle) {
+    else if (ball.check_collision_with_paddle(&right_paddle)) {
       ball.velocity = Vector2Reflect(ball.velocity, Vector2{x: -1, y: 0});
       ball.speed = ball.speed * 1.05;
     }
@@ -160,12 +209,10 @@ fn main() {
     defer EndDrawing();
     ClearBackground(BLACK);
 
-    // Draw paddles
-    DrawRectangleV(left_paddle.position, left_paddle.size, WHITE);
-    DrawRectangleV(right_paddle.position, right_paddle.size, WHITE);
-
-    // Draw ball
-    DrawCircleV(ball.position, ball.radius, WHITE);
+    // Draw all drawables
+    for i in 0..drawables.len {
+      drawables[i].draw();
+    }
 
     // Draw scores
     DrawText(TextFormat("%d", left_paddle.score), 30, 40, 30, WHITE);
