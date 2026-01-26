@@ -13,20 +13,13 @@ Controls for the game:
 - I/K to control the right paddle
 
 ## Build Instructions
-NOTE: Zen-C is still heavily in development. So far, built and tested on Linux using this specific [commit](https://github.com/z-libs/Zen-C/commit/f026d721ef6e1708b4ec28fdb68179cb7dda75d0) of Zen-C. But it should work with any newer versions of Zen-C.
+NOTE: Zen-C is still heavily in development. So far, built and tested on Linux using this specific [commit](https://github.com/z-libs/Zen-C/commit/2f47bdf7f49f05bd421e4182635f489c8cae01b3) of Zen-C. But it should work with any newer versions of Zen-C.
 
 1. Setup [emscripten](https://emscripten.org/docs/getting_started/downloads.html)
 2. Setup [Zen-C](https://github.com/z-libs/Zen-C) compiler
-3. Build raylib with emscripten, following the guide [here](https://github.com/raysan5/raylib/wiki/Working-for-Web-(HTML5)) from raylib's repo
-4. Clone this repo
-5. Create a folder named `external` in the root, and create a `raylib` folder in it.
-6. Place a Web version of `libraylib.a` and raylib's `include` folder inside the `raylib` folder
-    - It should look like this
-      - `zc_pong/external/raylib/include/raylib.h`
-      - `zc_pong/external/raylib/include/raymath.h`
-      - `zc_pong/external/raylib/libraylib.a`
-7. Modify any code in `main.zc` as you see fit
-8. Build with the following commands...
+3. Clone this repo
+4. Modify any code in `main.zc` as you see fit
+5. Build with the following commands...
     - Use this if you want to use emscripten's html
       - `zc build main.zc --cc emcc -o main.html`
     - Use this if you want to just update the JS and WASM file, maintaining the provided HTML file

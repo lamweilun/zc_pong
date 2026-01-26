@@ -4,12 +4,10 @@
 // Setup emscripten from here: https://emscripten.org/docs/getting_started/downloads.html
 // Compile raylib for web following this guide: https://github.com/raysan5/raylib/wiki/Working-for-Web-(HTML5)
 
-// Modify the next 3 lines as you see fit, depending on where your web build of raylib is installed
-//> include: ./external/raylib/include
-//> libs: ./external/raylib
-//> link: ./external/raylib/libraylib.a
-
-// Do not modify this line
+// Do not modify these lines
+//> include: ./raylib/include
+//> libs: ./raylib
+//> link: ./raylib/libraylib.a
 //> link: -s ASYNCIFY -s ASSERTIONS -s USE_GLFW=3 -s WASM=1 -s GL_ENABLE_GET_PROC_ADDRESS=1
 
 import "raylib.h"
@@ -20,7 +18,7 @@ import "time.h"
 import "std/vec.zc"
 
 fn get_random_float(min: f32, max: f32) -> f32 {
-  var scale = rand() / (f32)RAND_MAX;
+  let scale = rand() / (f32)RAND_MAX;
   return min + scale * (max - min);
 }
 
@@ -44,7 +42,7 @@ impl Ball {
     self.speed = speed;
     self.position = pos;
     // Random angle between -45deg to 45deg
-    var random_angle = get_random_float(0.0, PI / 2.0) - (PI / 4.0);
+    let random_angle = get_random_float(0.0, PI / 2.0) - (PI / 4.0);
     self.velocity = Vector2{
       x: cos(random_angle),
       y: sin(random_angle)
@@ -54,7 +52,7 @@ impl Ball {
   }
 
   fn check_collision_with_paddle(self, paddle: Paddle*) -> bool {
-    const paddle_rect = Rectangle{
+    def paddle_rect = Rectangle{
       x: paddle.position.x,
       y: paddle.position.y,
       width: paddle.size.x,
@@ -97,12 +95,12 @@ impl Drawable for Ball {
 }
 
 fn main() {
-  const window_width = 1280;
-  const window_height = 720;
-  const paddle_size_x = 10;
-  const paddle_size_y = 100;
-  const paddle_speed = 300;
-  const ball_speed = 400;
+  def window_width = 1280;
+  def window_height = 720;
+  def paddle_size_x = 10;
+  def paddle_size_y = 100;
+  def paddle_speed = 300;
+  def ball_speed = 400;
 
   InitWindow(window_width, window_height, "Hello zc raylib pong");
   defer CloseWindow();
@@ -110,7 +108,7 @@ fn main() {
   srand((u32)time(NULL));
 
   // Setup paddles
-  var left_paddle = Paddle {
+  let left_paddle = Paddle {
     position: Vector2 {
       x: 0,
       y: (window_height - paddle_size_y) / 2
@@ -121,29 +119,29 @@ fn main() {
     },
     speed: paddle_speed
   };
-  var right_paddle = left_paddle;
+  let right_paddle = left_paddle;
   right_paddle.position.x = window_width - right_paddle.position.x - right_paddle.size.x;
 
   // Setup ball
-  var ball = Ball{};
-  ball.radius = 10;
+  let ball = Ball{};
+  ball.radius = 10.0;
   ball.setup(Vector2{ x: (window_width) / 2, y: (window_height) / 2 }, ball_speed);
 
   // Setup list of movables
-  var movables = Vec<Movable>{};
+  let movables = Vec<Movable>{};
   defer movables.free();
-  var paddle_left_movable: Movable = &left_paddle;
-  var paddle_right_movable: Movable = &right_paddle;
-  var ball_movable: Movable = &ball;
+  let paddle_left_movable: Movable = &left_paddle;
+  let paddle_right_movable: Movable = &right_paddle;
+  let ball_movable: Movable = &ball;
   movables.push(paddle_left_movable);
   movables.push(paddle_right_movable);
   movables.push(ball_movable);
 
-  var drawables = Vec<Drawable>{};
+  let drawables = Vec<Drawable>{};
   defer drawables.free();
-  var left_paddle_drawable: Drawable = &left_paddle;
-  var right_paddle_drawable: Drawable = &right_paddle;
-  var ball_drawable: Drawable = &ball;
+  let left_paddle_drawable: Drawable = &left_paddle;
+  let right_paddle_drawable: Drawable = &right_paddle;
+  let ball_drawable: Drawable = &ball;
   drawables.push(left_paddle_drawable);
   drawables.push(right_paddle_drawable);
   drawables.push(ball_drawable);
@@ -169,7 +167,7 @@ fn main() {
     }
 
     // Update all movables
-    const dt = GetFrameTime();
+    def dt = GetFrameTime();
     for i in 0..movables.len {
       movables[i].move(dt);
     }
@@ -216,8 +214,8 @@ fn main() {
 
     // Draw scores
     DrawText(TextFormat("%d", left_paddle.score), 30, 40, 30, WHITE);
-    var right_score_text = TextFormat("%d", right_paddle.score);
-    var right_score_text_size = MeasureText(right_score_text, 30);
+    let right_score_text = TextFormat("%d", right_paddle.score);
+    let right_score_text_size = MeasureText(right_score_text, 30);
     DrawText(right_score_text, window_width - right_score_text_size - 30, 40, 30, WHITE);
   }
 }
